@@ -1,0 +1,17 @@
+export class TableNames {
+    static users = "users"
+    static admins = "admins"
+    static device_tokens = "device_tokens"
+    static site_contents = "site_contents"
+    static support_messages = "support_messages"
+    static cities = "cities"
+    static interests = "interests"
+    static user_interests = "user_interests"
+    static registration_otps = "registration_otps"
+    static user_availability_slots = "user_availability_slots"
+    static user_groups = "user_groups"
+    static wallet_accounts = "wallet_accounts"
+    static wallet_transactions = "wallet_transactions"
+    static bookings = "bookings"
+    static notifications = "notifications"
+}
