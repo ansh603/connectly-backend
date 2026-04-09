@@ -2,26 +2,6 @@ import fs from "fs";
 import path from "path";
 import models from "../../models/index.js";
 
-export const uploadFile = async (req, res) => {
-    try {
-      const { folder } = req.query;
-  
-      if (!req.file) {
-        return res.send({ status: false, message: "No file uploaded" });
-      }
-  
-      const filePath = `assets/${folder}/${req.file.filename}`;
-  
-      return res.json({
-        status: true,
-        message: "File uploaded successfully",
-        path: filePath,
-      });
-    } catch (error) {
-      return res.send({ status: false, message: error.message });
-    }
-  };
-
 export const deleteFile = async (req, res) => {
   try {
     const { file_path } = req.params;

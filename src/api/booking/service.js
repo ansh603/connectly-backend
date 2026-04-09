@@ -122,7 +122,7 @@ async function formatBookingForResponse(booking, currentUserId) {
   return {
     id: booking.id,
     person: other?.name || "",
-    photo: other?.profile_path || "",
+    photo: "",
     profileId: booking.provider_id,
     date: booking.booking_date,
     time: timeLabel,
@@ -154,13 +154,13 @@ export async function listBookingsService(userId, { tab } = {}) {
   const sent = await models.Booking.findAll({
     where: { booker_id: userId },
     order: [["created_at", "DESC"]],
-    include: [{ model: models.User, as: "provider", attributes: ["id", "name", "profile_path"] }],
+    include: [{ model: models.User, as: "provider", attributes: ["id", "name"] }],
   });
 
   const incoming = await models.Booking.findAll({
     where: { provider_id: userId },
     order: [["created_at", "DESC"]],
-    include: [{ model: models.User, as: "booker", attributes: ["id", "name", "profile_path"] }],
+    include: [{ model: models.User, as: "booker", attributes: ["id", "name"] }],
   });
 
   const formatOne = async (b, isBooker) => {
@@ -169,7 +169,7 @@ export async function listBookingsService(userId, { tab } = {}) {
     return {
       id: b.id,
       person: other?.name || "",
-      photo: other?.profile_path || "",
+      photo: "",
       profileId: b.provider_id,
       date: b.booking_date,
       time: timeLabel,

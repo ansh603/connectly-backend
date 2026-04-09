@@ -151,7 +151,6 @@ export const authProfileExtras = (user, availabilityOverride = null) => ({
     availabilityOverride ??
     buildAvailabilityJsonFromSlots(user?.availability_slots) ??
     null,
-  gallery_paths: parseGalleryPaths(user.gallery_paths),
   is_verified: user.is_verified === true,
 });
 
@@ -167,12 +166,6 @@ export async function loadUserForProfile(userId) {
         required: false,
       },
       {
-        model: models.UserGroup,
-        as: "group_profile",
-        attributes: ["members", "group_type", "group_name"],
-        required: false,
-      },
-      {
         model: models.UserAvailabilitySlot,
         as: "availability_slots",
         attributes: ["day", "on", "slot"],
@@ -184,24 +177,17 @@ export async function loadUserForProfile(userId) {
 
 function getUserDisplayName(user) {
   if (!user) return "";
-  if (user.user_type === "group") {
-    const gn = user.group_profile?.group_name;
-    if (gn != null && String(gn).trim()) return String(gn).trim();
-  }
   return user.name || "";
 }
 
 export function serializeProfile(user) {
   if (!user) return null;
-  const gallery_paths = parseGalleryPaths(user.gallery_paths);
   return {
     id: user.id,
     name: getUserDisplayName(user),
     email: user.email_address,
-    profile_path: user.profile_path,
     phone_number: user.phone_number,
     country_code: user.country_code,
-    type: user.user_type,
     city_id: user.city_id,
     city: user.city || null,
     bio: user.bio,
@@ -210,7 +196,6 @@ export function serializeProfile(user) {
     age: user.age,
     interests: user.interest_list || [],
     availability: buildAvailabilityJsonFromSlots(user.availability_slots),
-    gallery_paths,
     is_verified: user.is_verified === true,
   };
 }
@@ -393,12 +378,10 @@ export async function resendVerificationOtpService(emailRaw, password) {
 export async function registerUserService(body) {
   const {
     name,
-    profile_path,
     country_code,
     phone_number,
     email,
     password,
-    type,
     bio,
     rate,
     location,
@@ -406,14 +389,6 @@ export async function registerUserService(body) {
     age,
     interest_ids,
     availability,
-    profile_photos,
-    // group specific (optional)
-    group_name,
-    group_type,
-    members,
-    contact_name,
-    contact_mobile,
-    contact_country_code,
     fcm_token,
     device_id,
     device_token,
@@ -460,42 +435,19 @@ export async function registerUserService(body) {
   const user = await models.User.create({
     id: randomUUID(),
     name: displayName,
-    profile_path,
     country_code,
     phone_number,
     email_address: emailKey,
     password: hashedPassword,
-    user_type: type || "individual",
+    user_type: "individual",
     bio,
     rate,
     city_id: city_id || null,
     location,
     age,
-    gallery_paths: JSON.stringify(
-      Array.isArray(profile_photos) ? profile_photos.filter(Boolean) : []
-    ),
+    gallery_paths: JSON.stringify([]),
     is_verified: false,
   });
-
-  // If user registers as a group, store group-specific fields in a separate table.
-  if (type === "group") {
-    const membersNum = members == null || members === "" ? 1 : Number(members);
-    const groupMembers = Number.isFinite(membersNum) && membersNum > 0 ? membersNum : 1;
-
-    await models.UserGroup.create({
-      id: randomUUID(),
-      user_id: user.id,
-      group_name: group_name ?? null,
-      group_type: group_type ?? null,
-      members: groupMembers,
-      contact_name: contact_name ?? null,
-      contact_mobile:
-        contact_mobile == null || contact_mobile === ""
-          ? null
-          : String(contact_mobile).replace(/\s/g, ""),
-      contact_country_code: contact_country_code ?? null,
-    });
-  }
 
   if (Array.isArray(interest_ids) && interest_ids.length > 0) {
     const rows = interest_ids.map((interestId) => ({
@@ -541,10 +493,8 @@ export async function registerUserService(body) {
     id: user.id,
     name: getUserDisplayName(user),
     email: user.email_address,
-    profile_path: user.profile_path,
     phone_number: user.phone_number,
     country_code: user.country_code,
-    type: user.user_type,
     city_id: user.city_id,
     city,
     interests: userInterests,
@@ -573,12 +523,6 @@ function buildAuthUserInclude() {
       as: "interest_list",
       attributes: ["id", "name"],
       through: { attributes: [] },
-      required: false,
-    },
-    {
-      model: models.UserGroup,
-      as: "group_profile",
-      attributes: ["members", "group_type", "group_name"],
       required: false,
     },
     {
@@ -1160,12 +1104,6 @@ export async function exploreProfilesService(query = {}) {
       required: interestNames.length > 0,
       ...(interestNames.length > 0 ? { where: { name: { [Op.in]: interestNames } } } : {}),
     },
-    {
-      model: models.UserGroup,
-      as: "group_profile",
-      attributes: ["members", "group_type", "group_name"],
-      required: false,
-    },
   ];
 
   const offset = (pageNum - 1) * pageSizeNum;
@@ -1184,14 +1122,12 @@ export async function exploreProfilesService(query = {}) {
 
   // Map into the shape `ProfileCard` expects.
   const profiles = pageUsers.map((u) => {
-    const galleryPaths = parseGalleryPaths(u.gallery_paths);
     return {
       id: u.id,
-      name: getUserDisplayName(u),
-      type: u.user_type || "individual",
-      members: u.user_type === "group" ? u.group_profile?.members ?? 0 : undefined,
+      name: u.name || "",
+      type: "individual",
       live: true, // ExplorePage = verified users
-      photo: u.profile_path || galleryPaths[0] || null,
+      photo: null,
       price: u.rate != null ? Number(u.rate) : 0,
       bio: u.bio || "",
       rating: 4.8, // No rating columns in DB yet; keep UI stable.

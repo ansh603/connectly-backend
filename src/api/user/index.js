@@ -22,12 +22,11 @@ router.post(
   validate(
     Joi.object({
       name: Joi.string().required(),
-      profile_path: Joi.string().optional().allow("", null),
       country_code: Joi.string().optional().allow("", null),
       phone_number: Joi.string().optional().allow("", null),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
-      type: Joi.string().valid("individual", "group").optional(),
+      type: Joi.string().valid("individual").optional(),
       bio: Joi.string().optional().allow("", null),
       rate: Joi.number().optional().allow(null),
       location: Joi.string().optional().allow("", null),
@@ -35,18 +34,10 @@ router.post(
       age: Joi.number().integer().optional().allow(null),
       interest_ids: Joi.array().items(Joi.string().uuid()).optional(),
       availability: Joi.string().optional().allow("", null),
-      profile_photos: Joi.array().items(Joi.string()).optional(),
       fcm_token: Joi.string().optional().allow("", null),
       device_id: Joi.string().optional().allow("", null),
       device_token: Joi.string().optional().allow("", null),
       device_type: Joi.string().optional().allow("", null),
-      // Group registration (extra fields)
-      group_name: Joi.string().optional().allow("", null),
-      group_type: Joi.string().optional().allow("", null),
-      members: Joi.alternatives().try(Joi.number().integer(), Joi.string().allow("", null)).optional().allow(null),
-      contact_name: Joi.string().optional().allow("", null),
-      contact_mobile: Joi.string().optional().allow("", null),
-      contact_country_code: Joi.string().optional().allow("", null),
     })
   ),
   register
@@ -129,12 +120,8 @@ router.patch(
       location: Joi.string().optional().allow("", null),
       city_id: Joi.string().uuid().optional().allow(null, ""),
       age: Joi.number().integer().optional().allow(null),
-      profile_path: Joi.string().optional().allow("", null),
       interest_ids: Joi.array().items(Joi.string().uuid()).optional(),
       availability: Joi.string().optional().allow("", null),
-      gallery_paths: Joi.alternatives()
-        .try(Joi.array().items(Joi.string()), Joi.string().allow("", null))
-        .optional(),
     })
   ),
   updateProfile
@@ -147,7 +134,7 @@ router.get(
   validate(
     Joi.object({
       search: Joi.string().optional().allow("", null),
-      type: Joi.string().valid("all", "individual", "group").optional().allow("all", null),
+      type: Joi.string().valid("all", "individual").optional().allow("all", null),
       interests: Joi.string().optional().allow("", null),
       maxPrice: Joi.alternatives().try(Joi.number(), Joi.string().allow("")).optional(),
       sortBy: Joi.string().valid("rating", "price_asc", "price_desc").optional().allow("rating", null),
