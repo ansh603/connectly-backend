@@ -122,7 +122,7 @@ async function formatBookingForResponse(booking, currentUserId) {
   return {
     id: booking.id,
     person: other?.name || "",
-    photo: "",
+    photo: other?.profile_path || "",
     profileId: booking.provider_id,
     date: booking.booking_date,
     time: timeLabel,

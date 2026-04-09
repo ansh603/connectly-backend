@@ -33,7 +33,7 @@ export const verifyEmail = async (req, res) => {
 
 export const register = async (req, res) => {
   try {
-    const result = await registerUserService(req.body);
+    const result = await registerUserService(req.body, { profileImageFile: req.file || null });
     return res.status(result.status).json(result.body);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

@@ -394,6 +394,7 @@ export async function registerUserService(body) {
     device_token,
     device_type,
   } = body;
+  const { profileImageFile } = arguments.length > 1 ? arguments[1] || {} : {};
 
   const emailKey = normalizeEmail(email);
 
@@ -420,37 +421,71 @@ export async function registerUserService(body) {
     }
   }
 
-  if (Array.isArray(interest_ids) && interest_ids.length > 0) {
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const displayName = (name || "").trim() || null;
+
+  // Parse multipart fields (they may arrive as strings)
+  const parseInterestIds = (raw) => {
+    if (raw == null || raw === "") return [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === "string") {
+      try {
+        const j = JSON.parse(raw);
+        return Array.isArray(j) ? j.filter(Boolean) : [];
+      } catch {
+        return raw.split(",").map((s) => s.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
+  const interestIds = parseInterestIds(interest_ids);
+  const rateNum = rate == null || rate === "" ? null : Number(rate);
+  const ageNum = age == null || age === "" ? null : Number(age);
+
+  if (Array.isArray(interestIds) && interestIds.length > 0) {
     const count = await models.Interest.count({
-      where: { id: interest_ids },
+      where: { id: interestIds },
     });
-    if (count !== interest_ids.length) {
+    if (count !== interestIds.length) {
       return { status: 400, body: { success: false, message: "Invalid interests" } };
     }
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const displayName = (name || "").trim() || null;
+  let profile_path = null;
+  if (profileImageFile?.buffer) {
+    try {
+      const { uploadImageBufferToCloudinary } = await import("../../utils/cloudinary.js");
+      const uploaded = await uploadImageBufferToCloudinary(profileImageFile, {
+        folder: process.env.CLOUDINARY_FOLDER || "connectly/profile",
+      });
+      profile_path = uploaded.secure_url;
+    } catch (e) {
+      console.error("[register] cloudinary upload failed:", e?.message || e);
+      return { status: 500, body: { success: false, message: messages.SERVER_ERROR } };
+    }
+  }
 
   const user = await models.User.create({
     id: randomUUID(),
     name: displayName,
+    profile_path,
     country_code,
     phone_number,
     email_address: emailKey,
     password: hashedPassword,
     user_type: "individual",
     bio,
-    rate,
+    rate: rateNum,
     city_id: city_id || null,
     location,
-    age,
+    age: ageNum,
     gallery_paths: JSON.stringify([]),
     is_verified: false,
   });
 
-  if (Array.isArray(interest_ids) && interest_ids.length > 0) {
-    const rows = interest_ids.map((interestId) => ({
+  if (Array.isArray(interestIds) && interestIds.length > 0) {
+    const rows = interestIds.map((interestId) => ({
       id: randomUUID(),
       user_id: user.id,
       interest_id: interestId,
@@ -493,8 +528,10 @@ export async function registerUserService(body) {
     id: user.id,
     name: getUserDisplayName(user),
     email: user.email_address,
+    profile_path: user.profile_path,
     phone_number: user.phone_number,
     country_code: user.country_code,
+    type: user.user_type,
     city_id: user.city_id,
     city,
     interests: userInterests,
@@ -1127,7 +1164,7 @@ export async function exploreProfilesService(query = {}) {
       name: u.name || "",
       type: "individual",
       live: true, // ExplorePage = verified users
-      photo: null,
+      photo: u.profile_path || null,
       price: u.rate != null ? Number(u.rate) : 0,
       bio: u.bio || "",
       rating: 4.8, // No rating columns in DB yet; keep UI stable.

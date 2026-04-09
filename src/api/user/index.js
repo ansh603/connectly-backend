@@ -2,6 +2,7 @@ import express from "express";
 import Joi from "joi";
 import { validate } from "../../common/middleware/validation.middleware.js";
 import { authenticateToken } from "../../common/middleware/jwt.middleware.js";
+import { memoryImageUpload } from "../../common/middleware/memoryUpload.middleware.js";
 import {
   login,
   logout,
@@ -19,6 +20,7 @@ const router = express.Router();
 router.post(
   "/register",
   setLanguage,
+  memoryImageUpload.single("profile_image"),
   validate(
     Joi.object({
       name: Joi.string().required(),
@@ -28,11 +30,13 @@ router.post(
       password: Joi.string().min(6).required(),
       type: Joi.string().valid("individual").optional(),
       bio: Joi.string().optional().allow("", null),
-      rate: Joi.number().optional().allow(null),
+      rate: Joi.alternatives().try(Joi.number(), Joi.string().allow("", null)).optional().allow(null),
       location: Joi.string().optional().allow("", null),
       city_id: Joi.string().uuid().optional().allow("", null),
-      age: Joi.number().integer().optional().allow(null),
-      interest_ids: Joi.array().items(Joi.string().uuid()).optional(),
+      age: Joi.alternatives().try(Joi.number().integer(), Joi.string().allow("", null)).optional().allow(null),
+      interest_ids: Joi.alternatives()
+        .try(Joi.array().items(Joi.string().uuid()), Joi.string().allow("", null))
+        .optional(),
       availability: Joi.string().optional().allow("", null),
       fcm_token: Joi.string().optional().allow("", null),
       device_id: Joi.string().optional().allow("", null),
